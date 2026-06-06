@@ -534,6 +534,13 @@ function HistorySidebar({
               subject: 'Branch diff',
             }
           : null,
+        localRows.length > 0
+          ? {
+              key: 'history-section:branch',
+              kind: 'section' as const,
+              label: 'Branch commits',
+            }
+          : null,
         ...localRows,
       ].filter((row): row is NonNullable<typeof row> => row != null);
     }
