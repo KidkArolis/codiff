@@ -47,6 +47,19 @@ test('reload selection is consumed once and restored only when the file still ex
   expect(getReloadSelectionPath(selection, state([firstFile]))).toBeNull();
 });
 
+test('reload selection preserves the source without a selected file', () => {
+  const currentState = {
+    ...state([]),
+    source: { ref: 'main', type: 'branch' },
+  } satisfies RepositoryState;
+
+  writeReloadSelection(currentState, null);
+
+  const selection = consumeReloadSelection();
+  expect(selection?.source).toEqual(currentState.source);
+  expect(getReloadSelectionPath(selection, currentState)).toBeNull();
+});
+
 test('reload delta paths include only current files changed since reload', () => {
   const unchangedFile = file('src/unchanged.ts', 'same');
   const changedFile = file('src/changed.ts', 'before');

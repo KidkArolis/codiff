@@ -12,7 +12,7 @@ type ReloadSelectionFile = {
 type ReloadSelection = {
   files: ReadonlyArray<ReloadSelectionFile>;
   root: string;
-  selectedPath: string;
+  selectedPath: string | null;
   source: ReviewSource;
 };
 
@@ -79,7 +79,7 @@ const isReloadSelection = (value: unknown): value is ReloadSelection =>
   Array.isArray(value.files) &&
   value.files.every(isReloadSelectionFile) &&
   typeof value.root === 'string' &&
-  typeof value.selectedPath === 'string' &&
+  (value.selectedPath == null || typeof value.selectedPath === 'string') &&
   isReviewSource(value.source);
 
 const getMatchingSelection = (selection: ReloadSelection | null, state: RepositoryState) =>
@@ -117,7 +117,7 @@ export const getReloadSelectionPath = (
   state: RepositoryState,
 ): string | null => {
   const matchedSelection = getMatchingSelection(selection, state);
-  if (!matchedSelection) {
+  if (!matchedSelection || !matchedSelection.selectedPath) {
     return null;
   }
 
@@ -156,7 +156,7 @@ export const writeReloadSelection = (
   selectedPath: string | null,
 ) => {
   const storage = getStorage();
-  if (!storage || !state || !selectedPath) {
+  if (!storage || !state) {
     return;
   }
 

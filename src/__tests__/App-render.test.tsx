@@ -314,6 +314,45 @@ test('repository reload restores the selected file from the previous source', as
   }
 });
 
+test('repository reload preserves a branch source even without a selected file', async () => {
+  const source = { ref: 'main', type: 'branch' } satisfies ReviewSource;
+  const nextState = {
+    ...repositoryState,
+    files: [],
+    source,
+  } satisfies RepositoryState;
+  const getRepositoryState = vi.fn(async (requestedSource?: ReviewSource) =>
+    requestedSource?.type === 'branch' ? nextState : repositoryState,
+  );
+
+  writeReloadSelection(nextState, null);
+
+  window.codiff = createCodiffMock({
+    getRepositoryState,
+  });
+
+  const container = document.createElement('div');
+  document.body.append(container);
+  let root: Root | null = null;
+
+  try {
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<App />);
+    });
+
+    await waitFor(() => {
+      expect(container.querySelector('.loading')).toBeNull();
+    });
+    expect(getRepositoryState).toHaveBeenCalledWith(source);
+  } finally {
+    if (root) {
+      await act(async () => root?.unmount());
+    }
+    container.remove();
+  }
+});
+
 test('repository reload colors only git status glyphs for files changed after reload', async () => {
   const unchangedFile = createChangedFile('src/unchanged.ts', 'same');
   const changedFileBeforeReload = createChangedFile('src/changed.ts', 'before');
