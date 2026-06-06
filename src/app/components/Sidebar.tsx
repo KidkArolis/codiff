@@ -531,7 +531,7 @@ function HistorySidebar({
               kind: 'entry' as const,
               ref: branchSource.ref,
               source: branchSource satisfies ReviewSource,
-              subject: 'Branch history',
+              subject: 'Branch diff',
             }
           : null,
         ...localRows,

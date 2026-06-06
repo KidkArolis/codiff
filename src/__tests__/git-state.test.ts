@@ -787,7 +787,7 @@ test('readRepositoryState preserves numstat for committed paths with tabs', asyn
   });
 });
 
-test('readRepositoryState opens branch refs as history-focused sources', async () => {
+test('readRepositoryState opens branch refs as current branch diffs against the target branch', async () => {
   await withRepo(async (repo) => {
     await writeRepoFile(repo, 'file.txt', 'base\n');
     await commitAll(repo, 'initial commit');
@@ -802,18 +802,20 @@ test('readRepositoryState opens branch refs as history-focused sources', async (
     await git(repo, ['checkout', baseBranch]);
     await writeRepoFile(repo, 'file.txt', 'main change\n');
     await commitAll(repo, 'main change');
+    await git(repo, ['checkout', 'feature']);
 
     const [state, history] = await Promise.all([
-      readRepositoryState(repo, { ref: 'feature', type: 'branch' }),
-      listRepositoryHistory(repo, 10, { ref: 'feature', type: 'branch' }),
+      readRepositoryState(repo, { ref: baseBranch, type: 'branch' }),
+      listRepositoryHistory(repo, 10, { ref: baseBranch, type: 'branch' }),
     ]);
 
-    expect(state.files).toEqual([]);
-    expect(state.source).toEqual({ ref: 'feature', type: 'branch' });
+    expect(state.source).toEqual({ ref: baseBranch, type: 'branch' });
+    expect(state.files.map((file) => file.path)).toEqual(['file.txt']);
+    expect(state.files[0].sections[0].oldFile?.contents).toBe('base\n');
+    expect(state.files[0].sections[0].newFile?.contents).toBe('feature two\n');
     expect(history.entries.map((entry) => (entry as { subject: string }).subject)).toEqual([
       'feature two',
       'feature one',
-      'initial commit',
     ]);
   });
 });

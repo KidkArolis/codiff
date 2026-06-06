@@ -40,6 +40,15 @@ Review a specific commit:
 codiff a1b2c3d
 ```
 
+Review the current branch against a target branch:
+
+```bash
+codiff main
+codiff master
+```
+
+Run `codiff` or `codiff .` to review the current staged and unstaged diff instead.
+
 Start with an LLM-generated walkthrough order:
 
 ```bash

@@ -101,6 +101,10 @@ const readCommitPatch = (repoRoot, commit, firstParent, path) =>
       : ['show', '--format=', '--patch', '--no-ext-diff', '--find-renames', commit, '--', path],
   );
 
+/** @param {string} repoRoot @param {string} base @param {string} head @param {string} path */
+const readRangePatch = (repoRoot, base, head, path) =>
+  git(repoRoot, ['diff', '--patch', '--no-ext-diff', '--find-renames', base, head, '--', path]);
+
 /** @param {ReadonlyArray<string>} values @param {number} size */
 const chunk = (values, size) => {
   /** @type {Array<Array<string>>} */
@@ -397,6 +401,52 @@ const readCommitPatches = async (repoRoot, commit, firstParent, items) => {
 };
 
 /**
+ * @param {string} repoRoot
+ * @param {string} base
+ * @param {string} head
+ * @param {ReadonlyArray<Pick<StatusItem, 'path'>>} items
+ */
+const readRangePatches = async (repoRoot, base, head, items) => {
+  /** @type {Map<string, string>} */
+  const patches = new Map();
+
+  for (const itemChunk of chunk(
+    items.map((item) => item.path),
+    200,
+  )) {
+    if (itemChunk.length === 0) {
+      continue;
+    }
+
+    const patch = await git(repoRoot, [
+      'diff',
+      '--patch',
+      '--no-ext-diff',
+      '--find-renames',
+      base,
+      head,
+      '--',
+      ...itemChunk,
+    ]);
+    const patchChunks = splitCommitPatch(patch);
+
+    if (patchChunks.length === itemChunk.length) {
+      for (let index = 0; index < itemChunk.length; index += 1) {
+        patches.set(itemChunk[index], patchChunks[index]);
+      }
+    } else {
+      await Promise.all(
+        itemChunk.map(async (path) => {
+          patches.set(path, await readRangePatch(repoRoot, base, head, path));
+        }),
+      );
+    }
+  }
+
+  return patches;
+};
+
+/**
  * @param {string} commit
  * @param {Pick<StatusItem, 'oldPath' | 'path' | 'status'>} item
  * @param {ReturnType<typeof createEmptyFileContent>} oldFile
@@ -579,23 +629,6 @@ const readCommitImageContent = async (launchPath, ref, requestedPath) => {
   }
 };
 
-/** @param {string} launchPath @param {string} ref @returns {Promise<RepositoryState>} */
-const readBranchState = async (launchPath, ref) => {
-  const repoRoot = (await git(launchPath, ['rev-parse', '--show-toplevel'])).trim();
-  await git(repoRoot, ['rev-parse', '--verify', `${ref}^{commit}`]);
-
-  return {
-    files: [],
-    generatedAt: Date.now(),
-    launchPath,
-    root: repoRoot,
-    source: {
-      ref,
-      type: 'branch',
-    },
-  };
-};
-
 /**
  * @param {string} repoRoot
  * @param {string} ref
@@ -720,6 +753,76 @@ const readRangeSectionContent = async (
   return createCommitSection(newRef, item, oldFile, newFile, patch);
 };
 
+/**
+ * @param {string} launchPath @param {string} base @param {string} head @param {boolean} symmetric @param {string} requestedPath
+ * @returns {Promise<DiffImageContentResult>}
+ */
+const readRangeImageContent = async (launchPath, base, head, symmetric, requestedPath) => {
+  try {
+    const repoRoot = (await git(launchPath, ['rev-parse', '--show-toplevel'])).trim();
+    const path = validateRepositoryPath(requestedPath);
+    const { newRef, oldRef } = await resolveRangeRefs(repoRoot, base, head, symmetric);
+    const status = await readCommitNameStatus(repoRoot, newRef, oldRef, { sort: false });
+    const item = status.find((candidate) => candidate.path === path);
+    if (!item) {
+      throw new Error('File is not part of this range.');
+    }
+
+    const [oldImage, newImage] = await Promise.all([
+      readGitImageFile(repoRoot, oldRef, item.oldPath || item.path),
+      readGitImageFile(repoRoot, newRef, item.path),
+    ]);
+
+    if (!oldImage && !newImage) {
+      return {
+        reason: 'Codiff could not load either side of this image.',
+        status: 'unavailable',
+      };
+    }
+
+    return {
+      ...(newImage ? { newImage } : {}),
+      ...(oldImage ? { oldImage } : {}),
+      status: 'ready',
+    };
+  } catch (error) {
+    return {
+      reason: error instanceof Error ? error.message : 'Codiff could not load this image.',
+      status: 'unavailable',
+    };
+  }
+};
+
+/** @param {string} launchPath @param {string} ref @returns {Promise<RepositoryState>} */
+const readBranchState = async (launchPath, ref) => {
+  const state = await readRangeState(launchPath, ref, 'HEAD', true);
+  return {
+    ...state,
+    source: {
+      ref,
+      type: 'branch',
+    },
+  };
+};
+
+/**
+ * @param {string} launchPath
+ * @param {string} ref
+ * @param {string} requestedPath
+ * @param {{force?: boolean}} [options]
+ */
+const readBranchSectionContent = (launchPath, ref, requestedPath, options = {}) =>
+  readRangeSectionContent(launchPath, ref, 'HEAD', true, requestedPath, options);
+
+/**
+ * @param {string} launchPath
+ * @param {string} ref
+ * @param {string} requestedPath
+ * @returns {Promise<DiffImageContentResult>}
+ */
+const readBranchImageContent = (launchPath, ref, requestedPath) =>
+  readRangeImageContent(launchPath, ref, 'HEAD', true, requestedPath);
+
 /** @param {string} launchPath @param {ReviewSource} [source] @returns {Promise<RepositoryState>} */
 const readRepositoryState = async (launchPath, source = { type: 'working-tree' }) =>
   source.type === 'pull-request'
@@ -734,7 +837,11 @@ const readRepositoryState = async (launchPath, source = { type: 'working-tree' }
 const listRepositoryHistory = async (launchPath, limit = 200, ref = 'HEAD') => {
   const repoRoot = (await git(launchPath, ['rev-parse', '--show-toplevel'])).trim();
   try {
-    await git(repoRoot, ['rev-parse', '--verify', `${ref}^{commit}`]);
+    if (ref.includes('..')) {
+      await git(repoRoot, ['rev-list', '--max-count=1', ref]);
+    } else {
+      await git(repoRoot, ['rev-parse', '--verify', `${ref}^{commit}`]);
+    }
   } catch {
     return {
       entries: [],
@@ -779,10 +886,13 @@ const listRepositoryHistory = async (launchPath, limit = 200, ref = 'HEAD') => {
 module.exports = {
   listRepositoryHistory,
   parseCommitNameStatus,
+  readBranchImageContent,
+  readBranchSectionContent,
   readBranchState,
   readCommitImageContent,
   readCommitSectionContent,
   readCommitState,
+  readRangeImageContent,
   readRangeSectionContent,
   readRangeState,
 };

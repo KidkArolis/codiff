@@ -38,7 +38,7 @@ export const getSourceLabel = (source: ReviewSource) =>
   source.type === 'commit'
     ? getShortRef(source.ref)
     : source.type === 'branch'
-      ? source.ref
+      ? `Branch vs ${source.ref}`
       : source.type === 'range'
         ? rangeLabel(source)
         : source.type === 'pull-request'

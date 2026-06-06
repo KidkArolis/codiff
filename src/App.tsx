@@ -222,7 +222,8 @@ export default function App() {
         !currentState ||
         (currentState.source.type !== 'working-tree' &&
           currentState.source.type !== 'commit' &&
-          currentState.source.type !== 'range') ||
+          currentState.source.type !== 'range' &&
+          currentState.source.type !== 'branch') ||
         !shouldLoadDiffSectionContents(section)
       ) {
         return;
@@ -533,7 +534,8 @@ export default function App() {
       !state ||
       (state.source.type !== 'working-tree' &&
         state.source.type !== 'commit' &&
-        state.source.type !== 'range') ||
+        state.source.type !== 'range' &&
+        state.source.type !== 'branch') ||
       !selectedPath
     ) {
       return;
@@ -556,7 +558,11 @@ export default function App() {
   }, [loadDiffSection, selectedPath, state]);
 
   useEffect(() => {
-    if (!state || state.source.type !== 'working-tree' || !diffSearchQuery.trim()) {
+    if (
+      !state ||
+      (state.source.type !== 'working-tree' && state.source.type !== 'branch') ||
+      !diffSearchQuery.trim()
+    ) {
       return;
     }
 
@@ -2138,7 +2144,7 @@ export default function App() {
                 {state.source.type === 'commit'
                   ? 'No changes in commit'
                   : state.source.type === 'branch'
-                    ? 'Branch history'
+                    ? 'No branch changes'
                     : 'No local changes'}
               </strong>
               {state.source.type === 'commit' ? (
