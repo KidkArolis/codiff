@@ -527,6 +527,18 @@ function HistorySidebar({
               author: null,
               committedAt: null,
               gravatarUrl: undefined,
+              key: 'working-tree',
+              kind: 'entry' as const,
+              ref: '',
+              source: { type: 'working-tree' } satisfies ReviewSource,
+              subject: 'Uncommitted',
+            }
+          : null,
+        !normalizedQuery
+          ? {
+              author: null,
+              committedAt: null,
+              gravatarUrl: undefined,
               key: getSourceKey(branchSource),
               kind: 'entry' as const,
               ref: branchSource.ref,
@@ -538,7 +550,7 @@ function HistorySidebar({
           ? {
               key: 'history-section:branch',
               kind: 'section' as const,
-              label: 'Branch commits',
+              label: 'Branch history',
             }
           : null,
         ...localRows,
