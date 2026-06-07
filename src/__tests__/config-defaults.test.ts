@@ -12,6 +12,9 @@ const { createDefaultConfig: createElectronDefaultConfig } =
   require('../../electron/config.cjs') as {
     createDefaultConfig: typeof createDefaultConfig;
   };
+const { mergeConfig } = require('../../electron/config.cjs') as {
+  mergeConfig: (raw: unknown) => ReturnType<typeof createDefaultConfig>;
+};
 
 const getSchemaDefaults = (section: 'keymap' | 'settings') =>
   Object.fromEntries(
@@ -30,6 +33,36 @@ test('schema defaults match config defaults', () => {
 
 test('electron and renderer defaults match', () => {
   expect(createElectronDefaultConfig()).toEqual(createDefaultConfig());
+});
+
+test('electron config accepts diff font settings', () => {
+  expect(
+    mergeConfig({
+      settings: {
+        diffFontFamily: ' Fira Mono ',
+        diffFontSize: 12.5,
+      },
+    }).settings,
+  ).toMatchObject({
+    diffFontFamily: 'Fira Mono',
+    diffFontSize: 12.5,
+  });
+});
+
+test('electron config falls back for invalid diff font settings', () => {
+  const defaults = createDefaultConfig();
+
+  expect(
+    mergeConfig({
+      settings: {
+        diffFontFamily: 'Fira Mono, var(--font-mono)',
+        diffFontSize: 72,
+      },
+    }).settings,
+  ).toMatchObject({
+    diffFontFamily: defaults.settings.diffFontFamily,
+    diffFontSize: defaults.settings.diffFontSize,
+  });
 });
 
 test('electron defaults load from packaged app shape', () => {

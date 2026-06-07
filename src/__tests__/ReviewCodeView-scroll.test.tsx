@@ -7,7 +7,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { expect, test, vi } from 'vite-plus/test';
 import { ReviewCodeView } from '../app/components/ReviewCodeView.tsx';
-import { defaultKeymap } from '../config/defaults.ts';
+import { defaultKeymap, defaultSettings } from '../config/defaults.ts';
 import type { ReviewComment } from '../lib/app-types.ts';
 import type { ChangedFile, CommitMetadata, ReviewSource } from '../types.ts';
 
@@ -29,6 +29,7 @@ vi.mock('@pierre/diffs/react', async () => {
           item: CodeViewItem<unknown>,
         ) => React.ReactNode;
         renderCustomHeader?: (item: CodeViewItem<unknown>) => React.ReactNode;
+        style?: React.CSSProperties;
       },
       ref: React.ForwardedRef<unknown>,
     ) {
@@ -82,7 +83,7 @@ vi.mock('@pierre/diffs/react', async () => {
 
       return React.createElement(
         'div',
-        { className: props.className },
+        { className: props.className, style: props.style },
         props.items.map((item) =>
           React.createElement(
             'div',
@@ -220,6 +221,8 @@ test('reload scroll target is retried until the selected item renders', async ()
           collapsed={new Set()}
           comments={[]}
           commitMetadata={null}
+          diffFontFamily={defaultSettings.diffFontFamily}
+          diffFontSize={defaultSettings.diffFontSize}
           diffStyle="split"
           files={[createChangedFile('src/first.ts'), createChangedFile('src/second.ts')]}
           focusCommentId={null}
@@ -263,6 +266,13 @@ test('reload scroll target is retried until the selected item renders', async ()
         type: 'item',
       }),
     );
+    const codeView = container.querySelector<HTMLElement>('.code-view');
+    expect(codeView?.style.getPropertyValue('--codiff-diff-font-family')).toBe(
+      defaultSettings.diffFontFamily,
+    );
+    expect(codeView?.style.getPropertyValue('--codiff-diff-font-size')).toBe(
+      `${defaultSettings.diffFontSize}px`,
+    );
   } finally {
     if (root) {
       await act(async () => root?.unmount());
@@ -289,6 +299,8 @@ test('commit metadata file rows scroll to the matching diff', async () => {
           collapsed={new Set()}
           comments={[]}
           commitMetadata={commitMetadata}
+          diffFontFamily={defaultSettings.diffFontFamily}
+          diffFontSize={defaultSettings.diffFontSize}
           diffStyle="split"
           files={[createChangedFile('src/first.ts'), createChangedFile('src/second.ts')]}
           focusCommentId={null}
@@ -380,6 +392,8 @@ test('hunk navigation skips stale requests when the review view remounts', async
           collapsed={new Set()}
           comments={[]}
           commitMetadata={null}
+          diffFontFamily={defaultSettings.diffFontFamily}
+          diffFontSize={defaultSettings.diffFontSize}
           diffStyle="unified"
           files={[createChangedFile('src/first.ts')]}
           focusCommentId={null}
@@ -428,6 +442,8 @@ test('hunk navigation skips stale requests when the review view remounts', async
           collapsed={new Set()}
           comments={[]}
           commitMetadata={null}
+          diffFontFamily={defaultSettings.diffFontFamily}
+          diffFontSize={defaultSettings.diffFontSize}
           diffStyle="unified"
           files={[createChangedFile('src/first.ts')]}
           focusCommentId={null}
@@ -506,6 +522,8 @@ test('hunk navigation orders deletion comments before added rows in unified chan
         collapsed={new Set()}
         comments={[comment]}
         commitMetadata={null}
+        diffFontFamily={defaultSettings.diffFontFamily}
+        diffFontSize={defaultSettings.diffFontSize}
         diffStyle="unified"
         files={[file]}
         focusCommentId={null}
@@ -594,6 +612,8 @@ test('Enter on a focused review control is not converted into a hunk comment', a
         collapsed={new Set()}
         comments={[]}
         commitMetadata={null}
+        diffFontFamily={defaultSettings.diffFontFamily}
+        diffFontSize={defaultSettings.diffFontSize}
         diffStyle="unified"
         files={[createChangedFile('src/first.ts')]}
         focusCommentId={null}

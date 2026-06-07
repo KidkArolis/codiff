@@ -516,6 +516,8 @@ export type CodiffPreferences = {
   agentBackend: 'codex' | 'claude';
   claudeModel: string;
   copyCommentsOnClose: boolean;
+  diffFontFamily: string;
+  diffFontSize: number;
   diffStyle: CodiffDiffStyle;
   editorCommand: string;
   lastRepositoryPath: string;

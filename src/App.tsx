@@ -730,6 +730,16 @@ export default function App() {
     }
   }, [preferences.theme]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--codiff-diff-font-family', preferences.diffFontFamily);
+    root.style.setProperty('--codiff-diff-font-size', `${preferences.diffFontSize}px`);
+    return () => {
+      root.style.removeProperty('--codiff-diff-font-family');
+      root.style.removeProperty('--codiff-diff-font-size');
+    };
+  }, [preferences.diffFontFamily, preferences.diffFontSize]);
+
   useEffect(
     () => () => {
       if (programmaticScrollTimerRef.current != null) {
@@ -798,6 +808,8 @@ export default function App() {
   const showWhitespace = preferences.showWhitespace;
   const showOutdated = preferences.showOutdated;
   const diffStyle = preferences.diffStyle;
+  const diffFontFamily = preferences.diffFontFamily;
+  const diffFontSize = preferences.diffFontSize;
   const wordWrap = preferences.wordWrap;
   const visibleReviewComments = useMemo(
     () => getVisibleReviewComments(reviewComments, showOutdated),
@@ -1955,6 +1967,8 @@ export default function App() {
     collapsed,
     comments: visibleReviewComments,
     commitMetadata: state.source.type === 'commit' ? (state.commitMetadata ?? null) : null,
+    diffFontFamily,
+    diffFontSize,
     diffStyle,
     focusCommentId,
     focusCommentRequest,

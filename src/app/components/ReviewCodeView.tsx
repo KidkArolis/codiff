@@ -978,6 +978,8 @@ export function ReviewCodeView({
   collapsed,
   comments,
   commitMetadata,
+  diffFontFamily,
+  diffFontSize,
   diffStyle,
   files,
   focusCommentId,
@@ -1014,6 +1016,8 @@ export function ReviewCodeView({
   collapsed: ReadonlySet<string>;
   comments: ReadonlyArray<ReviewComment>;
   commitMetadata: CommitMetadata | null;
+  diffFontFamily: string;
+  diffFontSize: number;
   diffStyle: CodiffDiffStyle;
   files: ReadonlyArray<ChangedFile>;
   focusCommentId: string | null;
@@ -1080,6 +1084,14 @@ export function ReviewCodeView({
     commitDetailsCollapseState.itemId === commitDetailsItemId
       ? commitDetailsCollapseState.collapsed
       : false;
+  const codeViewStyle = useMemo(
+    () =>
+      ({
+        '--codiff-diff-font-family': diffFontFamily,
+        '--codiff-diff-font-size': `${diffFontSize}px`,
+      }) as CSSProperties,
+    [diffFontFamily, diffFontSize],
+  );
   const stickyHeaderFrameRef = useRef<number | null>(null);
   const commentsBySection = useMemo(() => {
     const map = new Map<string, Array<ReviewComment>>();
@@ -2135,6 +2147,7 @@ export function ReviewCodeView({
         renderAnnotation={renderAnnotation}
         renderCustomHeader={renderCustomHeader}
         selectedLines={selectedLines}
+        style={codeViewStyle}
       />
     </WorkerPoolContextProvider>
   );

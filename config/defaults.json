@@ -3,6 +3,8 @@
     "agentBackend": "codex",
     "claudeModel": "claude-sonnet-4-6",
     "copyCommentsOnClose": false,
+    "diffFontFamily": "\"Fira Mono\", \"Fira Code\", monospace",
+    "diffFontSize": 12.5,
     "diffStyle": "split",
     "editorCommand": "",
     "lastRepositoryPath": "",

@@ -113,6 +113,26 @@ const normalizeTheme = (theme) =>
 const normalizeDiffStyle = (diffStyle) =>
   diffStyle === 'split' || diffStyle === 'unified' ? diffStyle : 'split';
 
+/** @param {unknown} fontFamily @param {string} fallback */
+const normalizeDiffFontFamily = (fontFamily, fallback) => {
+  if (typeof fontFamily !== 'string') {
+    return fallback;
+  }
+
+  const trimmed = fontFamily.trim();
+  if (trimmed.length === 0 || trimmed === 'Fira Mono, var(--font-mono)') {
+    return fallback;
+  }
+
+  return trimmed;
+};
+
+/** @param {unknown} fontSize @param {number} fallback */
+const normalizeDiffFontSize = (fontSize, fallback) =>
+  typeof fontSize === 'number' && Number.isFinite(fontSize) && fontSize >= 6 && fontSize <= 40
+    ? fontSize
+    : fallback;
+
 /** @param {unknown} backend @returns {'codex' | 'claude'} */
 const normalizeAgentBackend = (backend) =>
   backend === 'codex' || backend === 'claude' ? backend : 'codex';
@@ -224,6 +244,11 @@ const mergeConfig = (raw) => {
         typeof rawSettings.copyCommentsOnClose === 'boolean'
           ? rawSettings.copyCommentsOnClose
           : defaults.settings.copyCommentsOnClose,
+      diffFontFamily: normalizeDiffFontFamily(
+        rawSettings.diffFontFamily,
+        defaults.settings.diffFontFamily,
+      ),
+      diffFontSize: normalizeDiffFontSize(rawSettings.diffFontSize, defaults.settings.diffFontSize),
       diffStyle: normalizeDiffStyle(rawSettings.diffStyle),
       editorCommand:
         typeof rawSettings.editorCommand === 'string'

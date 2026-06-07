@@ -6,6 +6,8 @@ export type CodiffSettings = {
   agentBackend: CodiffAgentBackend;
   claudeModel: string;
   copyCommentsOnClose: boolean;
+  diffFontFamily: string;
+  diffFontSize: number;
   diffStyle: CodiffDiffStyle;
   editorCommand: string;
   lastRepositoryPath: string;

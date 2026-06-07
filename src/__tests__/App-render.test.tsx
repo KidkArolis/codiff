@@ -140,6 +140,8 @@ const createCodiffMock = (overrides: Partial<Window['codiff']> = {}): Window['co
     agentBackend: 'codex' as const,
     claudeModel: defaultSettings.claudeModel,
     copyCommentsOnClose: true,
+    diffFontFamily: defaultSettings.diffFontFamily,
+    diffFontSize: defaultSettings.diffFontSize,
     diffStyle: 'split' as const,
     editorCommand: '',
     lastRepositoryPath: '/repo',

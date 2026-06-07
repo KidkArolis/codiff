@@ -30,6 +30,18 @@
           "default": false,
           "description": "Copy pending review comments to clipboard when closing a window."
         },
+        "diffFontFamily": {
+          "type": "string",
+          "default": "\"Fira Mono\", \"Fira Code\", monospace",
+          "description": "Font family used for diff and code content. Accepts a CSS font-family value, for example \"Fira Mono\" or \"JetBrains Mono, monospace\"."
+        },
+        "diffFontSize": {
+          "type": "number",
+          "minimum": 6,
+          "maximum": 40,
+          "default": 12.5,
+          "description": "Font size in pixels used for diff and code content."
+        },
         "diffStyle": {
           "type": "string",
           "enum": ["split", "unified"],
