@@ -38,7 +38,7 @@ const isReviewSource = (value: unknown): value is ReviewSource => {
     return true;
   }
 
-  if (value.type === 'commit' || value.type === 'branch') {
+  if (value.type === 'commit') {
     return typeof value.ref === 'string';
   }
 
@@ -47,6 +47,14 @@ const isReviewSource = (value: unknown): value is ReviewSource => {
       typeof value.base === 'string' &&
       typeof value.head === 'string' &&
       typeof value.symmetric === 'boolean'
+    );
+  }
+
+  if (value.type === 'branch') {
+    return (
+      typeof value.ref === 'string' &&
+      isOptionalString(value.baseRef) &&
+      isOptionalString(value.headRef)
     );
   }
 

@@ -22,7 +22,9 @@ const { readCommitMetadataForCommit } = require('./commit-metadata.cjs');
  * @typedef {import('../../src/types.ts').ChangedFile} ChangedFile
  * @typedef {import('../../src/types.ts').DiffImageContentResult} DiffImageContentResult
  * @typedef {import('../../src/types.ts').RepositoryState} RepositoryState
+ * @typedef {import('../../src/types.ts').ReviewSource} ReviewSource
  * @typedef {import('./common.cjs').StatusItem} StatusItem
+ * @typedef {Extract<ReviewSource, {type: 'branch'}>} BranchSource
  */
 
 /**
@@ -793,35 +795,75 @@ const readRangeImageContent = async (launchPath, base, head, symmetric, requeste
   }
 };
 
-/** @param {string} launchPath @param {string} ref @returns {Promise<RepositoryState>} */
-const readBranchState = async (launchPath, ref) => {
-  const state = await readRangeState(launchPath, ref, 'HEAD', true);
+/** @param {string | BranchSource} input @returns {BranchSource} */
+const normalizeBranchSourceInput = (input) =>
+  typeof input === 'string' ? { ref: input, type: 'branch' } : input;
+
+/**
+ * @param {string} repoRoot
+ * @param {BranchSource} source
+ * @returns {Promise<BranchSource & {baseRef: string; headRef: string}>}
+ */
+const resolveBranchSource = async (repoRoot, source) => {
+  if (source.baseRef && source.headRef) {
+    return {
+      baseRef: source.baseRef,
+      headRef: source.headRef,
+      ref: source.ref,
+      type: 'branch',
+    };
+  }
+
+  const { newRef, oldRef } = await resolveRangeRefs(repoRoot, source.ref, 'HEAD', true);
+  return {
+    baseRef: oldRef,
+    headRef: newRef,
+    ref: source.ref,
+    type: 'branch',
+  };
+};
+
+/** @param {string} launchPath @param {string | BranchSource} input @returns {Promise<RepositoryState>} */
+const readBranchState = async (launchPath, input) => {
+  const repoRoot = (await git(launchPath, ['rev-parse', '--show-toplevel'])).trim();
+  const source = await resolveBranchSource(repoRoot, normalizeBranchSourceInput(input));
+  const state = await readRangeState(launchPath, source.baseRef, source.headRef, false);
   return {
     ...state,
-    source: {
-      ref,
-      type: 'branch',
-    },
+    source,
   };
 };
 
 /**
  * @param {string} launchPath
- * @param {string} ref
+ * @param {string | BranchSource} input
  * @param {string} requestedPath
  * @param {{force?: boolean}} [options]
  */
-const readBranchSectionContent = (launchPath, ref, requestedPath, options = {}) =>
-  readRangeSectionContent(launchPath, ref, 'HEAD', true, requestedPath, options);
+const readBranchSectionContent = async (launchPath, input, requestedPath, options = {}) => {
+  const repoRoot = (await git(launchPath, ['rev-parse', '--show-toplevel'])).trim();
+  const source = await resolveBranchSource(repoRoot, normalizeBranchSourceInput(input));
+  return readRangeSectionContent(
+    launchPath,
+    source.baseRef,
+    source.headRef,
+    false,
+    requestedPath,
+    options,
+  );
+};
 
 /**
  * @param {string} launchPath
- * @param {string} ref
+ * @param {string | BranchSource} input
  * @param {string} requestedPath
  * @returns {Promise<DiffImageContentResult>}
  */
-const readBranchImageContent = (launchPath, ref, requestedPath) =>
-  readRangeImageContent(launchPath, ref, 'HEAD', true, requestedPath);
+const readBranchImageContent = async (launchPath, input, requestedPath) => {
+  const repoRoot = (await git(launchPath, ['rev-parse', '--show-toplevel'])).trim();
+  const source = await resolveBranchSource(repoRoot, normalizeBranchSourceInput(input));
+  return readRangeImageContent(launchPath, source.baseRef, source.headRef, false, requestedPath);
+};
 
 /** @param {string} launchPath @param {ReviewSource} [source] @returns {Promise<RepositoryState>} */
 const readRepositoryState = async (launchPath, source = { type: 'working-tree' }) =>
@@ -829,9 +871,11 @@ const readRepositoryState = async (launchPath, source = { type: 'working-tree' }
     ? readPullRequestState(launchPath, source)
     : source.type === 'commit'
       ? readCommitState(launchPath, source.ref)
-      : source.type === 'branch'
-        ? readBranchState(launchPath, source.ref)
-        : readWorkingTreeState(launchPath);
+      : source.type === 'range'
+        ? readRangeState(launchPath, source.base, source.head, source.symmetric)
+        : source.type === 'branch'
+          ? readBranchState(launchPath, source)
+          : readWorkingTreeState(launchPath);
 
 /** @param {string} launchPath @param {number} [limit] @param {string} [ref] */
 const listRepositoryHistory = async (launchPath, limit = 200, ref = 'HEAD') => {

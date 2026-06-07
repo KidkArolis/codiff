@@ -18,7 +18,7 @@ const { findMatchingWindowIdentity, getWindowIdentity, parseGitHubPullRequestUrl
       launchOptions?: {
         source?:
           | { type: 'working-tree' }
-          | { ref: string; type: 'branch' }
+          | { baseRef?: string; headRef?: string; ref: string; type: 'branch' }
           | { ref: string; type: 'commit' }
           | {
               number?: number;
@@ -95,12 +95,22 @@ test('window identities distinguish branch history launches', async () => {
 
   try {
     await git(repositoryPath, ['checkout', '-b', 'feature']);
+    const head = (await git(repositoryPath, ['rev-parse', 'HEAD'])).trim().toLowerCase();
 
     expect(
       getWindowIdentity(repositoryPath, {
         source: { ref: 'feature', type: 'branch' },
       })?.sourceKey,
-    ).toBe('branch:feature');
+    ).toBe(`branch:feature:${head}:${head}`);
+
+    await git(repositoryPath, ['commit', '--allow-empty', '-m', 'feature update']);
+    const nextHead = (await git(repositoryPath, ['rev-parse', 'HEAD'])).trim().toLowerCase();
+
+    expect(
+      getWindowIdentity(repositoryPath, {
+        source: { baseRef: head, headRef: nextHead, ref: 'feature', type: 'branch' },
+      })?.sourceKey,
+    ).toBe(`branch:feature:${head}:${nextHead}`);
   } finally {
     await rm(repositoryPath, { force: true, recursive: true });
   }

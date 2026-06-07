@@ -57,11 +57,15 @@ const readRepositoryState = async (launchPath, source = { type: 'working-tree' }
         : source.type === 'range'
           ? await readRangeState(launchPath, source.base, source.head, source.symmetric)
           : source.type === 'branch'
-            ? await readBranchState(launchPath, source.ref)
+            ? await readBranchState(launchPath, source)
             : await readWorkingTreeState(launchPath, { eagerContents: false });
   const branch = (await gitOrEmpty(state.root, ['symbolic-ref', '--short', 'HEAD'])).trim() || null;
   return { ...state, branch };
 };
+
+/** @param {Extract<ReviewSource, {type: 'branch'}>} source */
+const getBranchHistoryRef = (source) =>
+  source.baseRef && source.headRef ? `${source.baseRef}..${source.headRef}` : `${source.ref}..HEAD`;
 
 /** @param {string} launchPath @param {number} [limit] @param {ReviewSource} [source] @returns {Promise<RepositoryHistory>} */
 const readRepositoryHistory = (launchPath, limit, source) =>
@@ -70,7 +74,7 @@ const readRepositoryHistory = (launchPath, limit, source) =>
     : listRepositoryHistory(
         launchPath,
         limit,
-        source?.type === 'branch' ? `${source.ref}..HEAD` : undefined,
+        source?.type === 'branch' ? getBranchHistoryRef(source) : undefined,
       );
 
 /** @param {string} launchPath @param {DiffSectionContentRequest} request */
@@ -85,7 +89,7 @@ const readDiffSectionContent = async (launchPath, request) =>
         { force: request.force },
       )
     : request.source?.type === 'branch'
-      ? readBranchSectionContent(launchPath, request.source.ref, request.path, {
+      ? readBranchSectionContent(launchPath, request.source, request.path, {
           force: request.force,
         })
       : request.kind === 'commit' || request.source?.type === 'commit'
@@ -107,7 +111,7 @@ const readDiffImageContent = (launchPath, request) =>
           request.path,
         )
       : request.source?.type === 'branch'
-        ? readBranchImageContent(launchPath, request.source.ref, request.path)
+        ? readBranchImageContent(launchPath, request.source, request.path)
         : request.kind === 'commit' || request.source?.type === 'commit'
           ? readCommitImageContent(launchPath, request.source?.ref || 'HEAD', request.path)
           : readWorkingTreeDiffImageContent(launchPath, request);

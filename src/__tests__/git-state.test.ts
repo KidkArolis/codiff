@@ -804,16 +804,38 @@ test('readRepositoryState opens branch refs as current branch diffs against the 
     await commitAll(repo, 'main change');
     await git(repo, ['checkout', 'feature']);
 
-    const [state, history] = await Promise.all([
-      readRepositoryState(repo, { ref: baseBranch, type: 'branch' }),
-      listRepositoryHistory(repo, 10, { ref: baseBranch, type: 'branch' }),
-    ]);
+    const state = await readRepositoryState(repo, { ref: baseBranch, type: 'branch' });
+    const source = state.source as Extract<ReviewSource, { type: 'branch' }>;
+    const history = await listRepositoryHistory(repo, 10, source);
 
-    expect(state.source).toEqual({ ref: baseBranch, type: 'branch' });
+    expect(source.ref).toBe(baseBranch);
+    expect(source.type).toBe('branch');
+    expect(source.baseRef).toBeTruthy();
+    expect(source.headRef).toBeTruthy();
     expect(state.files.map((file) => file.path)).toEqual(['file.txt']);
     expect(state.files[0].sections[0].oldFile?.contents).toBe('base\n');
     expect(state.files[0].sections[0].newFile?.contents).toBe('feature two\n');
     expect(history.entries.map((entry) => (entry as { subject: string }).subject)).toEqual([
+      'feature two',
+      'feature one',
+    ]);
+
+    await writeRepoFile(repo, 'file.txt', 'feature three\n');
+    await commitAll(repo, 'feature three');
+
+    const [section, staleHistory] = await Promise.all([
+      readDiffSectionContent(repo, {
+        force: true,
+        kind: state.files[0].sections[0].kind,
+        path: 'file.txt',
+        source,
+      }),
+      listRepositoryHistory(repo, 10, source),
+    ]);
+
+    expect(section.oldFile?.contents).toBe('base\n');
+    expect(section.newFile?.contents).toBe('feature two\n');
+    expect(staleHistory.entries.map((entry) => (entry as { subject: string }).subject)).toEqual([
       'feature two',
       'feature one',
     ]);

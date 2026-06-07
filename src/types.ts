@@ -45,6 +45,8 @@ export type ReviewSource =
       type: 'commit';
     }
   | {
+      baseRef?: string;
+      headRef?: string;
       ref: string;
       type: 'branch';
     }

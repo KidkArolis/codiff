@@ -8,7 +8,7 @@ export const getSourceKey = (source: ReviewSource) =>
   source.type === 'commit'
     ? `commit:${source.ref}`
     : source.type === 'branch'
-      ? `branch:${source.ref}`
+      ? `branch:${source.ref}:${source.baseRef ?? ''}:${source.headRef ?? ''}`
       : source.type === 'range'
         ? `range:${rangeLabel(source)}`
         : source.type === 'pull-request'
