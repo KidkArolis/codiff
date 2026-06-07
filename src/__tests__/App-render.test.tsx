@@ -353,6 +353,54 @@ test('repository reload preserves a branch source even without a selected file',
   }
 });
 
+test('repository reload does not let stale selection override launch source', async () => {
+  const launchSource = { ref: 'main', type: 'branch' } satisfies ReviewSource;
+  const staleState = {
+    ...repositoryState,
+    source: { type: 'working-tree' },
+  } satisfies RepositoryState;
+  const branchState = {
+    ...repositoryState,
+    source: launchSource,
+  } satisfies RepositoryState;
+  const getRepositoryState = vi.fn(async (requestedSource?: ReviewSource) =>
+    requestedSource?.type === 'working-tree' ? staleState : branchState,
+  );
+
+  writeReloadSelection(staleState, null);
+
+  window.codiff = createCodiffMock({
+    getLaunchOptions: vi.fn(async () => ({
+      repositoryPathProvided: true,
+      source: launchSource,
+      walkthrough: false,
+    })),
+    getRepositoryState,
+  });
+
+  const container = document.createElement('div');
+  document.body.append(container);
+  let root: Root | null = null;
+
+  try {
+    await act(async () => {
+      root = createRoot(container);
+      root.render(<App />);
+    });
+
+    await waitFor(() => {
+      expect(container.querySelector('.loading')).toBeNull();
+    });
+    expect(getRepositoryState).toHaveBeenCalledWith(undefined);
+    expect(getRepositoryState).not.toHaveBeenCalledWith(staleState.source);
+  } finally {
+    if (root) {
+      await act(async () => root?.unmount());
+    }
+    container.remove();
+  }
+});
+
 test('repository reload colors only git status glyphs for files changed after reload', async () => {
   const unchangedFile = createChangedFile('src/unchanged.ts', 'same');
   const changedFileBeforeReload = createChangedFile('src/changed.ts', 'before');

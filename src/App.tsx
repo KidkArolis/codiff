@@ -126,6 +126,23 @@ const getPreferencesFromConfig = ({ settings }: CodiffConfig): CodiffPreferences
 
 const defaultPreferences = getPreferencesFromConfig(createDefaultConfig());
 
+const getReloadSourceForLaunch = (
+  reloadSelection: ReturnType<typeof consumeReloadSelection>,
+  launchOptions: CodiffLaunchOptions,
+) => {
+  if (!reloadSelection) {
+    return undefined;
+  }
+
+  if (!launchOptions.source) {
+    return reloadSelection.source;
+  }
+
+  return getSourceKey(reloadSelection.source) === getSourceKey(launchOptions.source)
+    ? reloadSelection.source
+    : undefined;
+};
+
 export default function App() {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const [activeDiffSearchMatchIndex, setActiveDiffSearchMatchIndex] = useState(0);
@@ -372,7 +389,9 @@ export default function App() {
       }
       setTerminalHelperStatus(nextTerminalHelperStatus);
 
-      const nextState = await window.codiff.getRepositoryState(reloadSelection?.source);
+      const nextState = await window.codiff.getRepositoryState(
+        getReloadSourceForLaunch(reloadSelection, nextLaunchOptions),
+      );
 
       if (canceled) {
         return;
